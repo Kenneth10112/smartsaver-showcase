@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SmartSaver — Home energy, on autopilot</title>
+<meta name="description" content="SmartSaver is a local-first home energy system built on ESP32 and ESP-NOW. Motion, light, climate and time rules switch the loads that matter — without a cloud dependency.">
+<meta property="og:title" content="SmartSaver — Home energy, on autopilot">
+<meta property="og:description" content="A local-first home energy system built on ESP32 and ESP-NOW.">
+<meta property="og:image" content="images/og-cover.png">
+<meta name="theme-color" content="#CFCAB4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+  try {
+    var savedTheme = localStorage.getItem("smartsaver-showcase-theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    }
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #CFCAB4;
+    --ink: #4A463C;
+    --muted: #766F5E;
+    --line: #A8A38F;
+    --save: #6B6A3C;
+    --on-save: #F1ECD6;
+    --sun: #4A463C;
+    --peak: #9B4A33;
+    --peak-bg: #C2B99F;
+    color-scheme: light;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --sans: "Zen Kaku Gothic New", system-ui, sans-serif;
+    --max: 1000px;
+    --pad: 20px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #38352D;
+      --ink: #D6D0B8;
+      --muted: #9A937D;
+      --line: #5A564A;
+      --save: #B5B070;
+      --on-save: #38352D;
+      --sun: #D6D0B8;
+      --peak: #D98866;
+      --peak-bg: #4B4234;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #38352D;
+    --ink: #D6D0B8;
+    --muted: #9A937D;
+    --line: #5A564A;
+    --save: #B5B070;
+    --on-save: #38352D;
+    --sun: #D6D0B8;
+    --peak: #D98866;
+    --peak-bg: #4B4234;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 72px; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg);
+    background-image: radial-gradient(var(--line) .8px, transparent 1px);
+    background-size: 7px 7px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  img, video { display: block; max-width: 100%; }
+  button { font: inherit; color: inherit; }
+  ::selection { background: var(--ink); color: var(--bg); }
+  :focus-visible { outline: 2px solid var(--peak); outline-offset: 2px; }
+
+  .wrap {
+    width: calc(100% - 40px);
+    max-width: var(--max);
+    margin-inline: auto;
+  }
+
+  /* ------------------------------------------------------------- header */
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 2px solid var(--ink);
+  }
+  .top-inner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 10px 0 9px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .brand::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    background: var(--ink);
+    transform: rotate(45deg);
+  }
+  .tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+  .tabs a {
+    display: inline-block;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    transition: background .15s ease, color .15s ease;
+  }
+  .tabs a:hover,
+  .tabs a.is-active {
+    background: var(--ink);
+    color: var(--bg);
+    box-shadow: 3px 3px 0 var(--line);
+  }
+  .theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 4px 10px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    border-radius: 0;
+    font-size: 11px;
+    letter-spacing: .06em;
+    cursor: pointer;
+  }
+  .theme-btn:hover { background: var(--ink); color: var(--bg); }
+
+  /* ------------------------------------------------------------- shared */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 5px 13px;
+    border: 1.5px solid var(--ink);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .btn:hover,
+  .btn.primary {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .btn.primary:hover { background: var(--save); color: var(--on-save); border-color: var(--save); }
+
+  .sec { padding: 30px 0 14px; }
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--ink);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .section-heading::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    background: var(--ink);
+  }
+  .section-sub {
+    max-width: 60ch;
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .muted { color: var(--muted); }
+  .rule { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+  /* ------------------------------------------------------------- hero */
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr);
+    gap: 40px;
+    align-items: center;
+    padding: 34px 0 30px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .hero h1 {
+    margin: 0 0 14px;
+    font-size: clamp(38px, 6.2vw, 68px);
+    line-height: 1.08;
+    letter-spacing: .015em;
+    font-weight: 700;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--save);
+  }
+  .lede {
+    max-width: 52ch;
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .lede strong { color: var(--ink); font-weight: 700; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .facts {
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .fact {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .fact:first-child { border-top: 0; }
+  .fact dt { color: var(--muted); }
+  .fact dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* ------------------------------------------------------------- overview */
+  .overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, .65fr);
+    gap: 40px;
+    align-items: start;
+  }
+  .overview-copy p {
+    margin: 0;
+    font-size: clamp(18px, 2.2vw, 25px);
+    line-height: 1.5;
+    letter-spacing: .005em;
+    color: var(--muted);
+  }
+  .overview-copy p + p { margin-top: 14px; }
+  .overview-copy strong { color: var(--ink); font-weight: 700; }
+  .overview-copy .em { color: var(--save); }
+  .principles { border-top: 1px solid var(--ink); }
+  .principle {
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .principle b {
+    display: block;
+    margin-bottom: 1px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .principle span { color: var(--muted); }
+
+  /* ------------------------------------------------------------- media */
+  .video-block { padding: 26px 0 10px; }
+  .media-frame {
+    border: 1.5px solid var(--ink);
+    background: #000;
+    overflow: hidden;
+  }
+  .media-frame img,
+  .media-frame video {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    object-fit: cover;
+    background: #000;
+  }
+  .video-frame video { aspect-ratio: 16 / 9; cursor: pointer; }
+  .media-caption {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 0;
+    padding: 7px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .media-caption span:last-child { text-align: right; color: var(--muted); }
+  .video-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+
+  /* ------------------------------------------------------------- general flow */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--ink);
+    margin-top: 6px;
+  }
+  .flow-step {
+    position: relative;
+    min-width: 0;
+    padding: 12px 26px 14px 0;
+    border-right: 1px solid var(--line);
+  }
+  .flow-step:last-child { border-right: 0; padding-right: 0; }
+  .flow-step:not(:last-child)::after {
+    content: "→";
+    position: absolute;
+    top: 10px;
+    right: 9px;
+    color: var(--line);
+    font-size: 16px;
+  }
+  .flow-num {
+    display: block;
+    margin-bottom: 26px;
+    color: var(--save);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .flow-step h3 {
+    margin: 0 0 5px;
+    font-size: 18px;
+    line-height: 1.3;
+    letter-spacing: .03em;
+  }
+  .flow-step p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .flow-step a {
+    display: inline-block;
+    margin-top: 8px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .flow-step a:hover { border-color: var(--ink); color: var(--ink); }
+
+  .flow-carousel { border: 1.5px solid var(--ink); background: var(--bg); }
+  .flow-slide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+    padding: 16px;
+  }
+  .flow-slide img,
+  .flow-slide video {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    object-fit: cover;
+    background: #000;
+    border: 1px solid var(--line);
+  }
+  .loop-video { cursor: default; object-fit: contain; background: #000; }
+  .media-frame video.loop-video,
+  .flow-slide video.loop-video { object-fit: contain; background: #000; }
+  .flow-copy {
+    display: block !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border-top: 0 !important;
+  }
+  .flow-copy .flow-num { margin-bottom: 10px; }
+  .flow-copy h3 {
+    margin: 0 0 7px;
+    font-size: clamp(22px, 3vw, 30px);
+    line-height: 1.25;
+    letter-spacing: .03em;
+  }
+  .flow-copy p { margin: 0; color: var(--muted); font-size: 14px; }
+  .flow-copy a {
+    display: inline-block;
+    margin-top: 10px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .flow-copy a:hover { border-color: var(--ink); color: var(--ink); }
+  .flow-carousel .carousel-controls { margin: 0 16px; }
+
+  /* ------------------------------------------------------------- features */
+  .feature {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: center;
+    padding: 26px 0;
+    border-top: 1px solid var(--line);
+  }
+  .feature:first-of-type { border-top: 1px solid var(--ink); }
+  .feature.reverse .feature-copy { order: 2; }
+  .feature.reverse .feature-media { order: 1; }
+  .feature h3 {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3.4vw, 36px);
+    line-height: 1.22;
+    letter-spacing: .025em;
+    font-weight: 700;
+  }
+  .feature p { margin: 0; color: var(--muted); font-size: 14px; }
+  .feature p + p { margin-top: 10px; }
+  .feature strong { color: var(--ink); font-weight: 700; }
+
+  /* Numbered instructions are plain paragraphs: no grid, no reserved column. */
+  .steps {
+    margin: 14px 0 0;
+    border-top: 1px solid var(--ink);
+  }
+  .step {
+    margin: 0;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .step .n {
+    display: inline-block;
+    margin-right: 7px;
+    color: var(--ink);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .step b { color: var(--ink); font-weight: 700; }
+
+  .labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 14px;
+  }
+  .label {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .label.em { border-color: var(--save); color: var(--save); }
+
+  /* ------------------------------------------------------------- modular hardware */
+  .modular-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(240px, .7fr);
+    gap: 32px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+  .modular-intro p { margin: 0; color: var(--muted); font-size: 14px; }
+  .modular-intro p + p { margin-top: 10px; }
+  .modular-intro strong { color: var(--ink); font-weight: 700; }
+  .modular-note {
+    margin: 0;
+    padding: 8px 0 8px 12px;
+    border-left: 4px solid var(--peak);
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .carousel-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .carousel-block {
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 1px solid var(--ink);
+  }
+  .carousel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 40px;
+    margin-bottom: 7px;
+  }
+  .carousel-head h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .carousel-head p { max-width: 65%; margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
+
+  .carousel { border: 1.5px solid var(--ink); background: var(--bg); }
+  .carousel-slide { display: none; margin: 0; }
+  .carousel-slide.is-active { display: block; }
+  .carousel-slide img {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    object-fit: cover;
+    background: #000;
+  }
+  .carousel-slide figcaption {
+    display: block;
+    min-height: 58px;
+    padding: 7px 10px;
+    border-top: 1px solid var(--ink);
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .carousel-slide figcaption b { display: block; margin-bottom: 1px; font-weight: 700; }
+  .carousel-slide figcaption span { display: block; color: var(--muted); }
+  .carousel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+  }
+  .carousel-btn {
+    min-width: 40px;
+    min-height: 28px;
+    padding: 2px 9px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    border-radius: 0;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .carousel-btn:hover { background: var(--ink); color: var(--bg); }
+  .carousel-dots { display: flex; align-items: center; gap: 5px; }
+  .carousel-dot {
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border: 1px solid var(--ink);
+    background: transparent;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .carousel-dot.is-active { background: var(--ink); }
+
+  .connect-video {
+    margin-top: 22px;
+    padding-top: 10px;
+    border-top: 1px solid var(--ink);
+  }
+  .connect-video h3 {
+    margin: 0 0 8px;
+    font-size: clamp(22px, 3vw, 30px);
+    line-height: 1.3;
+    letter-spacing: .03em;
+  }
+  .connect-video .media-frame video { aspect-ratio: 16 / 9; }
+
+  /* ------------------------------------------------------------- hardware */
+  .hardware-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 14px 0 10px;
+  }
+  .hardware-item { min-width: 0; }
+  .hardware-item .media-frame img { aspect-ratio: 16 / 10; }
+  .hardware-item h3 {
+    margin: 9px 0 4px;
+    font-size: 17px;
+    line-height: 1.3;
+    letter-spacing: .03em;
+  }
+  .hardware-item p { margin: 0; color: var(--muted); font-size: 12px; }
+  .hardware-item .media-caption { display: block; padding-top: 5px; font-size: 11px; }
+  .hardware-item .media-caption span { display: block; }
+
+  .architecture {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--ink);
+    margin-top: 22px;
+  }
+  .architecture article {
+    min-width: 0;
+    padding: 12px 18px;
+    border-right: 1px solid var(--line);
+  }
+  .architecture article:first-child { padding-left: 0; }
+  .architecture article:last-child { border-right: 0; padding-right: 0; }
+  .architecture h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    letter-spacing: .04em;
+  }
+  .architecture p { margin: 0; color: var(--muted); font-size: 12px; }
+
+  /* ------------------------------------------------------------- rules */
+  .rule-list {
+    margin-top: 14px;
+    border-top: 1px solid var(--ink);
+  }
+  .rule-row {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .rule-row .mark {
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--ink);
+    background: transparent;
+  }
+  .rule-row.active .mark { background: var(--save); border-color: var(--save); }
+  .rule-row strong { font-weight: 700; }
+  .rule-row .state { color: var(--save); font-size: 11px; }
+  .rule-row .state.later { color: var(--muted); }
+
+  /* ------------------------------------------------------------- closing */
+  .closing-text {
+    max-width: 60ch;
+    margin: 0 0 18px;
+    font-size: clamp(22px, 3.4vw, 32px);
+    line-height: 1.38;
+    letter-spacing: .01em;
+    font-weight: 500;
+  }
+  .back-top {
+    display: inline-block;
+    margin-top: 18px;
+    border-bottom: 1px solid var(--save);
+    color: var(--save);
+    font-size: 13px;
+  }
+
+  /* ------------------------------------------------------------- footer */
+  .foot {
+    margin-top: 24px;
+    padding: 14px 0 34px;
+    border-top: 2px solid var(--ink);
+  }
+  .foot-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+  }
+  .foot .brand { font-size: 15px; margin-right: 0; }
+  .foot-note {
+    max-width: 48ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+  }
+  .foot-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 20px;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .foot-bottom a { border-bottom: 1px solid var(--line); }
+  .foot-bottom a:hover { border-color: var(--ink); }
+
+  /* ------------------------------------------------------------- media viewer */
+  body.viewer-open { overflow: hidden; }
+  .zoomable { cursor: zoom-in; }
+
+  .viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(74, 70, 60, .78);
+  }
+  .viewer[hidden] { display: none; }
+  .viewer-card {
+    width: min(1100px, 100%);
+    max-height: 92vh;
+    overflow: auto;
+    padding: 10px;
+    background: var(--bg);
+    border: 1.5px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--line);
+  }
+  .viewer-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .viewer-head p {
+    margin: 0;
+    max-width: 72ch;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .viewer img {
+    width: 100%;
+    max-height: 74vh;
+    object-fit: contain;
+    background: #000;
+    border: 1px solid var(--line);
+  }
+
+  /* ------------------------------------------------------------- end-of-page feedback prompt */
+  .feedback-prompt {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 60;
+    width: min(380px, calc(100vw - 40px));
+    padding: 14px;
+    background: var(--bg);
+    border: 1.5px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--line);
+  }
+  .feedback-prompt[hidden] { display: none; }
+  .feedback-prompt h2 {
+    margin: 0 0 5px;
+    font-size: 23px;
+    line-height: 1.25;
+    letter-spacing: .02em;
+    font-weight: 700;
+  }
+  .feedback-prompt p {
+    margin: 0 0 11px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .feedback-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ------------------------------------------------------------- responsive */
+  @media (max-width: 760px) {
+    .top-inner { gap: 8px; }
+    .tabs { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+    .tabs a { padding: 5px 8px; white-space: nowrap; }
+    .hero { grid-template-columns: 1fr; gap: 24px; padding-top: 24px; }
+    .overview { grid-template-columns: 1fr; gap: 22px; }
+    .feature { grid-template-columns: 1fr; gap: 18px; padding: 22px 0; }
+    .feature.reverse .feature-copy,
+    .feature.reverse .feature-media { order: initial; }
+    .hardware-row { grid-template-columns: 1fr; }
+    .carousel-pair { grid-template-columns: 1fr; }
+    .flow { grid-template-columns: 1fr; }
+    .flow-slide { grid-template-columns: 1fr; gap: 12px; padding: 10px; }
+    .flow-carousel .carousel-controls { margin: 0 10px; }
+    .flow-step {
+      padding: 11px 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .flow-step:last-child { border-bottom: 0; }
+    .flow-step:not(:last-child)::after { display: none; }
+    .flow-num { margin-bottom: 7px; }
+    .architecture { grid-template-columns: 1fr; }
+    .architecture article {
+      padding: 10px 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .architecture article:last-child { border-bottom: 0; }
+    .foot-top { display: block; }
+    .foot-note { margin-top: 10px; text-align: left; }
+    .foot-bottom { display: block; line-height: 1.9; }
+    .media-caption { display: block; }
+    .media-caption span { display: block; text-align: left !important; margin-top: 3px; }
+  }
+
+  @media (max-width: 440px) {
+    .wrap { width: calc(100% - 30px); }
+    .feedback-prompt { right: 8px; bottom: 8px; width: calc(100vw - 16px); }
+    .brand { font-size: 16px; letter-spacing: .14em; }
+    .theme-btn { font-size: 10px; padding: 4px 7px; }
+    .hero h1 { font-size: 38px; }
+    .fact { gap: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="#top" aria-label="SmartSaver home">SmartSaver</a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#flow">Flow</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#software">Software</a>
+      <a href="#rules">Rules</a>
+      <a href="#config">Config</a>
+    </nav>
+    <a class="theme-btn" href="documentation.html">Documentation</a>
+    <button type="button" class="theme-btn" id="themeToggle" aria-label="Switch to dark mode">Dark mode</button>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+
+  <!-- ============================================================ HERO -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div>
+      <h1 id="hero-title">Your home,<br>on <em>autopilot.</em></h1>
+      <p class="lede">A local-first energy system that turns <strong>motion, light, climate and time</strong> into small automatic decisions — so a room stops using power when nobody is using the room.</p>
+      <div class="actions">
+        <a class="btn primary" href="#video">Watch the build</a>
+        <a class="btn" href="#overview">How it works</a>
+        <a class="btn" href="evaluation.html">Feedback</a>
+      </div>
+    </div>
+    <dl class="facts" aria-label="System facts">
+      <div class="fact"><dt>Decision loop</dt><dd>Local</dd></div>
+      <div class="fact"><dt>Radio</dt><dd>ESP-NOW</dd></div>
+      <div class="fact"><dt>Rule shape</dt><dd>1 trigger → 1 action</dd></div>
+      <div class="fact"><dt>Cloud</dt><dd>Optional</dd></div>
+    </dl>
+  </section>
+
+  <!-- ============================================================ OVERVIEW -->
+  <section class="sec" id="overview" aria-labelledby="overview-title">
+    <h2 class="section-heading" id="overview-title">Overview</h2>
+    <div class="overview">
+      <div class="overview-copy">
+        <p><strong>SmartSaver is a home energy system</strong> that automates the loads people usually leave running: lights, fans, appliances, and whatever else is plugged into a relay. It watches the signals a room already gives — occupancy, daylight, temperature, humidity, the clock — and switches only when the situation calls for it.</p>
+        <p>The hub keeps the decision loop <span class="em">inside the house</span>. Rules run on the ESP32; the dashboard is for setup, visibility and manual override. If the internet disappears, the room is still in autopilot.</p>
+        <p>It is modular on purpose. A wired sensor is declared once, a wireless module is paired once, and the rules engine treats both as parts. Add a capability when you need it. Remove it when you do not.</p>
+      </div>
+      <div class="principles" aria-label="Design principles">
+        <div class="principle"><b>Local</b><span>Rules and overrides live on the Hub.</span></div>
+        <div class="principle"><b>Explicit</b><span>One trigger, one action. No hidden logic.</span></div>
+        <div class="principle"><b>Modular</b><span>Wired parts, paired modules, one registry.</span></div>
+        <div class="principle"><b>Honest</b><span>State, history and savings are visible.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ VIDEO -->
+  <section class="video-block" id="video" aria-labelledby="video-title">
+    <div class="media-frame video-frame">
+      <video controls playsinline preload="none"
+             poster="images/video-compilation.png"
+             aria-label="Placeholder for a short compilation video: a lamp turns off at a scheduled time, a relay activates from the light sensor, a light turns on from motion, and a wireless module is paired.">
+        <source src="videos/compilation.mp4" type="video/mp4">
+        Your browser does not support video.
+      </video>
+    </div>
+    <p class="media-caption">
+      <span id="video-title">A short pass through the system: time rule, light rule, motion rule, pairing.</span>
+    </p>
+  </section>
+
+  <!-- ============================================================ GENERAL FLOW -->
+  <section class="sec" id="flow" aria-labelledby="flow-title">
+    <h2 class="section-heading" id="flow-title">The general flow</h2>
+    <p class="section-sub">SmartSaver is used in four passes: read the room first, declare what is connected, add the automation, then handle the slower settings.</p>
+
+    <div class="flow-carousel carousel" data-carousel="flow" role="region" aria-label="General flow carousel">
+      <div class="carousel-viewport" aria-live="polite">
+        <figure class="carousel-slide is-active">
+          <div class="flow-slide">
+            <img src="images/flow-dashboard.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the Home dashboard as the first screen: climate, light, motion, relay state and clock cards visible at a glance.">
+            <figcaption class="flow-copy">
+              <span class="flow-num">01</span>
+              <h3>Check the dashboard</h3>
+              <p>Start on Home and read the first screen: climate, light, motion, relay state and the clock. It tells you what the room is doing before you change anything.</p>
+              <a href="#software">See the dashboard</a>
+            </figcaption>
+          </div>
+        </figure>
+
+        <figure class="carousel-slide">
+          <div class="flow-slide">
+            <img src="images/flow-parts.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the Parts page: the pairing area at the top and the sensors and actuators checklist below it, with enabled parts marked.">
+            <figcaption class="flow-copy">
+              <span class="flow-num">02</span>
+              <h3>Declare the part</h3>
+              <p>Open Parts and enable the sensor or actuator that is actually connected. The registry and the available rule options follow that declaration.</p>
+              <a href="#hardware">See the parts</a>
+            </figcaption>
+          </div>
+        </figure>
+
+        <figure class="carousel-slide">
+          <div class="flow-slide">
+            <img src="images/flow-rules.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the Rules page: the four-step custom rule wizard open beside the existing rule list.">
+            <figcaption class="flow-copy">
+              <span class="flow-num">03</span>
+              <h3>Add a rule</h3>
+              <p>Choose a predefined bundle or build a custom rule: one trigger, one action. Manual override stays available when the room needs you.</p>
+              <a href="#rules">See the rules</a>
+            </figcaption>
+          </div>
+        </figure>
+
+        <figure class="carousel-slide">
+          <div class="flow-slide">
+            <video class="loop-video" controls autoplay muted loop playsinline preload="metadata"
+                   poster="images/flow-config.png"
+                   aria-label="Short walkthrough of the Config page: six square setting buttons for Wi-Fi, login, clock, backup, restart and reset, with one panel opening.">
+              <source src="videos/flow-config.mp4" type="video/mp4">
+              Your browser does not support video.
+            </video>
+            <figcaption class="flow-copy">
+              <span class="flow-num">04</span>
+              <h3>Config for later</h3>
+              <p>Set the clock and time zone, review the backup, and change Wi-Fi or login only when needed. These are the slower jobs, not the daily loop.</p>
+              <a href="#config">See the config</a>
+            </figcaption>
+          </div>
+        </figure>
+      </div>
+      <div class="carousel-controls">
+        <button type="button" class="carousel-btn" data-prev aria-label="Previous flow step">←</button>
+        <div class="carousel-dots" aria-label="Choose a flow step">
+          <button type="button" class="carousel-dot is-active" data-dot="0" aria-label="Show dashboard step"></button>
+          <button type="button" class="carousel-dot" data-dot="1" aria-label="Show parts step"></button>
+          <button type="button" class="carousel-dot" data-dot="2" aria-label="Show rules step"></button>
+          <button type="button" class="carousel-dot" data-dot="3" aria-label="Show config step"></button>
+        </div>
+        <button type="button" class="carousel-btn" data-next aria-label="Next flow step">→</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ SOFTWARE -->
+  <section class="sec" id="software" aria-labelledby="software-title">
+    <h2 class="section-heading" id="software-title">Software</h2>
+    <p class="section-sub">From first boot to daily use, every screen is local to the Hub and served from the Hub. No account creation, no companion app, no waiting for a cloud round trip.</p>
+
+    <article class="feature">
+      <div class="feature-copy">
+        <h3>Wi-Fi provisioning<br>and dashboard login.</h3>
+        <p>Power the Hub. Join the <strong>SmartSaver setup network</strong>. Provide the home Wi-Fi credentials, set a dashboard password, and let the Hub reboot onto the network. The dashboard appears at <strong>smartsaver.local</strong>.</p>
+        <p>It is deliberately a one-time flow. Wi-Fi credentials and the dashboard login stay on the device and are not part of a system backup.</p>
+        <div class="steps">
+          <p class="step"><span class="n">01</span><b>Connect</b> to the setup access point.</p>
+          <p class="step"><span class="n">02</span><b>Provide</b> the home Wi-Fi network and password.</p>
+          <p class="step"><span class="n">03</span><b>Sign in</b> to the dashboard locally.</p>
+        </div>
+        <div class="labels"><span class="label em">One-time setup</span><span class="label">No account</span><span class="label">mDNS</span></div>
+      </div>
+      <div class="feature-media">
+        <figure class="media-frame">
+          <video controls playsinline preload="metadata"
+                 poster="images/feature-provisioning.png"
+                 aria-label="Walkthrough of Wi-Fi provisioning and dashboard login: the SmartSaver setup page on a phone, entering the home network credentials, then signing in to the Hub dashboard.">
+            <source src="videos/wifi-provisioning.mp4" type="video/mp4">
+            Your browser does not support video.
+          </video>
+        </figure>
+        <p class="media-caption"><span>Setup page → network credentials → dashboard login.</span></p>
+      </div>
+    </article>
+
+    <article class="feature reverse">
+      <div class="feature-copy">
+        <h3>A dashboard you check,<br>not manage.</h3>
+        <p>The dashboard is where you look and where you occasionally step in — not another job. Every enabled part becomes a row on Home: temperature and humidity, light or dark, motion, relay state, RTC. Values update as readings arrive.</p>
+        <p>Manual override is part of the same surface. Give a load an explicit On or Off, watch the countdown, then <strong>clear overrides</strong> when you want the rules to take the room back. The automation keeps running underneath.</p>
+        <div class="labels"><span class="label em">Live parts</span><span class="label">Manual override</span><span class="label">Clear all</span></div>
+      </div>
+      <div class="feature-media">
+        <figure class="media-frame">
+          <img src="images/feature-dashboard.png" width="1600" height="1000" loading="lazy"
+               alt="Black placeholder for the Home dashboard showing six part cards: RTC clock, motion, climate, buzzer, lamp and fan, with live values and override countdowns.">
+        </figure>
+        <p class="media-caption"><span>Part cards, live state, override countdown.</span></p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================ HARDWARE -->
+  <section class="sec" id="hardware" aria-labelledby="hardware-title">
+    <h2 class="section-heading" id="hardware-title">Hardware</h2>
+    <p class="section-sub">The Hub is the fixed part. Everything else is chosen per room, so the system starts at the size of the problem instead of the size of a catalog.</p>
+
+    <div class="modular-intro">
+      <div>
+        <p><strong>Modular is a cost decision.</strong> A room that needs one motion sensor and one relay should not pay for a full sensor board. Buy the parts that room needs, declare them once, and add another sensor or relay later without replacing the Hub or rebuilding the rules.</p>
+        <p>The same registry also makes the system scale. Wired parts are declared in the checklist; wireless modules are paired over ESP-NOW. Add a second room, a second relay or a different sensor, and the rule builder sees the new part as another option. The automation grows one part at a time.</p>
+      </div>
+      <p class="modular-note"><strong>Future plans, clearly marked.</strong> Some catalog entries describe a future plan for if the system scales up to more sensor and actuator types. They are not part of the current tested build. They are labelled unimplemented and disabled until a working driver exists, so they cannot be mistaken for available hardware.</p>
+    </div>
+
+    <div class="carousel-pair">
+    <div class="carousel-block">
+      <div class="carousel-head">
+        <h3>All the parts</h3>
+        <p>HUB · Relay · Another relay · Wireless Motion</p>
+      </div>
+      <div class="carousel" data-carousel="parts" role="region" aria-label="All parts carousel">
+        <div class="carousel-viewport" aria-live="polite">
+          <figure class="carousel-slide is-active">
+            <img src="images/part-hub.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the SmartSaver Hub: the ESP32 DevKit on a small base with the RTC, motion, climate and light connectors labelled.">
+            <figcaption><b>HUB</b><span>The ESP32 controller, local storage and the rule engine.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/part-relay.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for a relay module wired into an extension lead with a set of outlets, showing the relay switching the whole outlet set.">
+            <figcaption><b>Relay</b><span>An extension lead with switched outlets.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/part-relay-2.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for a modified bulb socket controlled by a relay, with the relay module and bulb visible.">
+            <figcaption><b>Another relay</b><span>A modified bulb socket controlled by a relay.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/part-motion.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for a wireless motion sensor with an ESP32-C3 module, with its power and mounting points labelled.">
+            <figcaption><b>Wireless Motion</b><span>A paired motion sensor for rooms without wiring.</span></figcaption>
+          </figure>
+        </div>
+        <div class="carousel-controls">
+          <button type="button" class="carousel-btn" data-prev aria-label="Previous part">←</button>
+          <div class="carousel-dots" aria-label="Choose a part">
+            <button type="button" class="carousel-dot is-active" data-dot="0" aria-label="Show HUB"></button>
+            <button type="button" class="carousel-dot" data-dot="1" aria-label="Show Relay"></button>
+            <button type="button" class="carousel-dot" data-dot="2" aria-label="Show Another relay"></button>
+            <button type="button" class="carousel-dot" data-dot="3" aria-label="Show Wireless Motion"></button>
+          </div>
+          <button type="button" class="carousel-btn" data-next aria-label="Next part">→</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="carousel-block">
+      <div class="carousel-head">
+        <h3>Tested Hub Sensors</h3>
+        <p>Currently implemented and working</p>
+      </div>
+      <div class="carousel" data-carousel="sensors" role="region" aria-label="Tested Hub Sensors carousel">
+        <div class="carousel-viewport" aria-live="polite">
+          <figure class="carousel-slide is-active">
+            <img src="images/sensor-rtc.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the DS3231 RTC module wired to the Hub, with SDA, SCL, VCC and GND labelled.">
+            <figcaption><b>RTC (DS3231)</b><span>Keeps time for schedules and the dashboard clock.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/sensor-motion.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the RCWL-0516 motion sensor tested on the Hub, with its three leads and detection range indicated.">
+            <figcaption><b>Motion (RCWL-0516)</b><span>Occupancy for presence-based rules.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/sensor-climate.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the DHT11 climate sensor connected to the Hub, with the temperature and humidity element visible.">
+            <figcaption><b>Climate (DHT11)</b><span>Temperature and humidity for comfort rules.</span></figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="images/sensor-light.png" width="1600" height="1000" loading="lazy"
+                 alt="Black placeholder for the photoresistor light sensor on the Hub, with the divider resistor and analogue pin labelled.">
+            <figcaption><b>Light (photoresistor)</b><span>Dark or bright for lighting rules.</span></figcaption>
+          </figure>
+        </div>
+        <div class="carousel-controls">
+          <button type="button" class="carousel-btn" data-prev aria-label="Previous sensor">←</button>
+          <div class="carousel-dots" aria-label="Choose a sensor">
+            <button type="button" class="carousel-dot is-active" data-dot="0" aria-label="Show RTC"></button>
+            <button type="button" class="carousel-dot" data-dot="1" aria-label="Show Motion"></button>
+            <button type="button" class="carousel-dot" data-dot="2" aria-label="Show Climate"></button>
+            <button type="button" class="carousel-dot" data-dot="3" aria-label="Show Light"></button>
+          </div>
+          <button type="button" class="carousel-btn" data-next aria-label="Next sensor">→</button>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="connect-video">
+      <h3>Connecting a sensor, without a manual.</h3>
+      <div class="media-frame video-frame">
+        <video controls playsinline preload="none"
+               poster="images/video-connect-sensor.png"
+               aria-label="Placeholder for a short video showing a sensor being plugged into the Hub, the part appearing in the Parts checklist, and the first rule using it.">
+          <source src="videos/connect-sensor.mp4" type="video/mp4">
+          Your browser does not support video.
+        </video>
+      </div>
+      <p class="media-caption"><span>Power off → connect the leads → declare the part → use it in a rule.</span></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ PAIRING -->
+  <section class="sec" id="pairing" aria-labelledby="pairing-title">
+    <h2 class="section-heading" id="pairing-title">Pairing</h2>
+    <p class="section-sub">A wireless module is paired once. Open the pairing window, power the module, name the candidate, and approve it — then it is available to the same parts list and rule builder as a wired part.</p>
+    <div class="connect-video">
+      <h3>Pairing a module, without a manual.</h3>
+      <div class="media-frame video-frame">
+        <video controls playsinline preload="none"
+               poster="images/video-pairing-demo.png"
+               aria-label="Placeholder for a short video showing a wireless module being powered on, appearing as a pairing candidate, being named and approved, then appearing in the parts list.">
+          <source src="videos/pairing-demo.mp4" type="video/mp4">
+          Your browser does not support video.
+        </video>
+      </div>
+      <p class="media-caption"><span>Open pairing → power the module → name the candidate → approve.</span></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ RULES -->
+  <section class="sec" id="rules" aria-labelledby="rules-title">
+    <h2 class="section-heading" id="rules-title">Rules</h2>
+    <p class="section-sub">Rules are deliberately small: a condition on one part, and one command to one actuator. The constraint makes the system predictable, editable and easy to explain to the people who live with it.</p>
+
+    <article class="feature">
+      <div class="feature-copy">
+        <h3>Predefined rules,<br>already grounded.</h3>
+        <p>The catalog is built from the parts currently on the Hub. Categories such as <strong>Security</strong>, <strong>Power Savings</strong>, <strong>Comfort</strong> and <strong>Lighting</strong> open into combinations that match the current registry.</p>
+        <p>Each choice is an ordinary rule bundle. Add it, then edit it like anything else. If a part exists only as a future catalog entry, the bundle is labelled <strong>unimplemented</strong> and cannot be selected.</p>
+        <div class="rule-list" aria-label="Example predefined rules">
+          <div class="rule-row active"><span class="mark"></span><span><strong>Security</strong> · Motion + buzzer</span><span class="state">On</span></div>
+          <div class="rule-row"><span class="mark"></span><span><strong>Comfort</strong> · Climate + relay</span><span class="state later">Later</span></div>
+          <div class="rule-row"><span class="mark"></span><span><strong>Lighting</strong> · Motion + lamp</span><span class="state later">Later</span></div>
+        </div>
+      </div>
+      <div class="feature-media">
+        <figure class="media-frame">
+          <img src="images/feature-rules.png" width="1600" height="1000" loading="lazy"
+               alt="Black placeholder for the Rules page: category buttons with available counts, a predefined-rule popup with checkboxes, and the rules table behind it with two visible rule cards.">
+        </figure>
+        <p class="media-caption"><span>Category → combo checklist → editable rules.</span></p>
+      </div>
+    </article>
+
+    <article class="feature reverse">
+      <div class="feature-copy">
+        <h3>Four questions.<br>One custom rule.</h3>
+        <p>The custom builder is a short wizard, not a form dump: name the rule, choose the trigger device and state, choose the action device and command, review, create.</p>
+        <p>Need to change it later? Edit opens the same flow, populated. Need it gone? Delete removes it. Priority follows the list order.</p>
+        <div class="steps">
+          <p class="step"><span class="n">01</span><b>Name</b> the intent, not the implementation.</p>
+          <p class="step"><span class="n">02</span><b>Choose</b> a part and the exact state.</p>
+          <p class="step"><span class="n">03</span><b>Choose</b> the device and action.</p>
+          <p class="step"><span class="n">04</span><b>Review</b> before writing.</p>
+        </div>
+      </div>
+      <div class="feature-media">
+        <figure class="media-frame">
+          <video class="loop-video" controls autoplay muted loop playsinline preload="metadata"
+                 poster="images/feature-custom-rule.png"
+                 aria-label="Short walkthrough of the custom rule wizard: name the rule, choose a trigger device and state, choose an action, review, and create.">
+            <source src="videos/feature-custom-rule.mp4" type="video/mp4">
+            Your browser does not support video.
+          </video>
+        </figure>
+        <p class="media-caption"><span>The custom-rule wizard in four steps.</span></p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================ CONFIG -->
+  <section class="sec" id="config" aria-labelledby="config-title">
+    <h2 class="section-heading" id="config-title">Config</h2>
+    <p class="section-sub">Config is a small grid of jobs: Wi-Fi, login, clock, backup, restart, reset. Each one opens its own panel. Nothing important is hidden inside a wizard you have to remember.</p>
+
+    <article class="feature">
+      <div class="feature-copy">
+        <h3>Backup the system,<br>not the credentials.</h3>
+        <p>A backup carries <strong>parts, rules, paired devices and preferences</strong>. It deliberately does not carry Wi-Fi provisioning or the dashboard login, so a configuration can move between Hubs without carrying a network identity with it.</p>
+        <p>Restore replaces those system files, keeps the Hub on its current network, and reboots. It is a restore of the automation, not a factory clone.</p>
+        <div class="labels"><span class="label em">Parts</span><span class="label">Rules</span><span class="label">Pairing</span><span class="label">Preferences</span><span class="label">No credentials</span></div>
+      </div>
+      <div class="feature-media">
+        <figure class="media-frame">
+          <video controls playsinline preload="metadata"
+                 poster="images/feature-config.png"
+                 aria-label="Walkthrough of the Config page: a two-column grid of six setting buttons, with the Backup and restore panel opening and its download and restore actions visible.">
+            <source src="videos/feature-config.mp4" type="video/mp4">
+            Your browser does not support video.
+          </video>
+        </figure>
+        <p class="media-caption"><span>Six jobs. One panel at a time.</span></p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================ CLOSING -->
+  <section class="sec" aria-labelledby="closing-title">
+    <h2 class="section-heading" id="closing-title">Why it matters</h2>
+    <p class="closing-text" id="closing-title-text">The best automation is the one nobody has to think about. SmartSaver makes the room react to what is already happening, and makes every decision visible enough to trust or change.</p>
+    <div class="architecture">
+      <article><h3>Sense</h3><p>Motion, light, temperature, humidity, time. Wired or wireless, all through one registry.</p></article>
+      <article><h3>Decide</h3><p>A rule engine that runs on the Hub, with priority order and manual overrides that always win.</p></article>
+      <article><h3>Act</h3><p>Relay, buzzer, lamp, fan. The command goes to the exact part the rule names.</p></article>
+    </div>
+    <a class="back-top" href="#top">Back to the top ↑</a>
+  </section>
+
+</main>
+
+<footer class="foot wrap">
+  <div class="foot-top">
+    <a class="brand" href="#top">SmartSaver</a>
+    <p class="foot-note">A local-first home energy system built around an ESP32 Hub, ESP-NOW modules, and a deliberately small rule engine. Dashboard, pairing and history are optional to the automation itself.</p>
+  </div>
+  <div class="foot-bottom">
+    <span>ESP32 · ESP-NOW · Local-first · Rules that stay in the house</span>
+    <span>SmartSaver showcase</span>
+  </div>
+</footer>
+
+<aside class="feedback-prompt" id="feedbackPrompt" role="dialog" aria-labelledby="feedbackTitle" aria-describedby="feedbackBody" hidden>
+  <h2 id="feedbackTitle">Thank you for checking out our system!</h2>
+  <p id="feedbackBody">If you have a few minutes, share an expert evaluation of SmartSaver.</p>
+  <div class="feedback-actions">
+    <a class="btn primary" href="evaluation.html">Submit a feedback</a>
+    <button type="button" class="theme-btn" id="feedbackClose">Close</button>
+  </div>
+</aside>
+
+<div class="viewer" id="mediaViewer" role="dialog" aria-modal="true" aria-labelledby="mediaViewerCaption" hidden>
+  <div class="viewer-card">
+    <div class="viewer-head">
+      <p id="mediaViewerCaption">Media preview</p>
+      <button type="button" class="btn" id="mediaViewerClose">Close</button>
+    </div>
+    <img id="mediaViewerImage" alt="">
+  </div>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById("themeToggle");
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll(".tabs a"));
+    var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
+
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      Array.prototype.forEach.call(document.querySelectorAll("video.loop-video"), function (video) {
+        video.removeAttribute("autoplay");
+        video.pause();
+      });
+    }
+
+    function setTheme(theme) {
+      root.setAttribute("data-theme", theme);
+      toggle.textContent = theme === "dark" ? "Light mode" : "Dark mode";
+      toggle.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+      try { localStorage.setItem("smartsaver-showcase-theme", theme); } catch (e) {}
+    }
+
+    var current = root.getAttribute("data-theme");
+    setTheme(current === "dark" ? "dark" : "light");
+    toggle.addEventListener("click", function () {
+      setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+    });
+
+    var viewer = document.getElementById("mediaViewer");
+    var viewerImage = document.getElementById("mediaViewerImage");
+    var viewerCaption = document.getElementById("mediaViewerCaption");
+    var viewerClose = document.getElementById("mediaViewerClose");
+    var viewerReturnFocus = null;
+
+    function captionFor(image) {
+      var figure = image.closest("figure");
+      var caption = figure && figure.querySelector("figcaption");
+      if (!caption) {
+        var holder = image.closest(".feature-media, .hardware-item, .carousel-block");
+        caption = holder && holder.querySelector(".media-caption");
+      }
+      return caption ? caption.textContent.trim() : image.alt;
+    }
+
+    function openViewer(image) {
+      viewerReturnFocus = document.activeElement;
+      viewerImage.src = image.currentSrc || image.src;
+      viewerImage.alt = image.alt || "";
+      viewerCaption.textContent = captionFor(image) || image.alt;
+      viewer.hidden = false;
+      document.body.classList.add("viewer-open");
+      viewerClose.focus();
+    }
+
+    function closeViewer() {
+      viewer.hidden = true;
+      document.body.classList.remove("viewer-open");
+      if (viewerReturnFocus && typeof viewerReturnFocus.focus === "function") {
+        viewerReturnFocus.focus();
+      }
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll("main img"), function (image) {
+      image.classList.add("zoomable");
+      image.tabIndex = 0;
+      image.setAttribute("role", "button");
+      image.setAttribute("aria-label", "View larger: " + (image.alt || "media"));
+      image.addEventListener("click", function () { openViewer(image); });
+      image.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openViewer(image);
+        }
+      });
+    });
+    viewerClose.addEventListener("click", closeViewer);
+    viewer.addEventListener("click", function (event) {
+      if (event.target === viewer) {
+        closeViewer();
+      }
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !viewer.hidden) {
+        closeViewer();
+      }
+    });
+
+    var feedbackPrompt = document.getElementById("feedbackPrompt");
+    var feedbackClose = document.getElementById("feedbackClose");
+    var feedbackDismissed = false;
+    try {
+      feedbackDismissed = sessionStorage.getItem("smartsaver-feedback-dismissed") === "1";
+    } catch (e) {}
+
+    function closeFeedback() {
+      feedbackPrompt.hidden = true;
+      feedbackDismissed = true;
+      try { sessionStorage.setItem("smartsaver-feedback-dismissed", "1"); } catch (e) {}
+    }
+
+    function maybeShowFeedback() {
+      if (feedbackDismissed || !feedbackPrompt.hidden) {
+        return;
+      }
+      if (document.body.classList.contains("viewer-open")) {
+        return;
+      }
+      var nearEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 320;
+      if (nearEnd) {
+        feedbackPrompt.hidden = false;
+      }
+    }
+
+    feedbackClose.addEventListener("click", closeFeedback);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !feedbackPrompt.hidden) {
+        closeFeedback();
+      }
+    });
+    window.addEventListener("scroll", maybeShowFeedback, { passive: true });
+    window.addEventListener("load", maybeShowFeedback);
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-carousel]"), function (carousel) {
+      var slides = Array.prototype.slice.call(carousel.querySelectorAll(".carousel-slide"));
+      var dots = Array.prototype.slice.call(carousel.querySelectorAll(".carousel-dot"));
+      var index = 0;
+
+      function show(next) {
+        index = (next + slides.length) % slides.length;
+        slides.forEach(function (slide, i) {
+          slide.classList.toggle("is-active", i === index);
+        });
+        dots.forEach(function (dot, i) {
+          dot.classList.toggle("is-active", i === index);
+          dot.setAttribute("aria-current", i === index ? "true" : "false");
+        });
+      }
+
+      carousel.querySelector("[data-prev]").addEventListener("click", function () {
+        show(index - 1);
+      });
+      carousel.querySelector("[data-next]").addEventListener("click", function () {
+        show(index + 1);
+      });
+      dots.forEach(function (dot, i) {
+        dot.addEventListener("click", function () { show(i); });
+      });
+      carousel.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          show(index - 1);
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          show(index + 1);
+        }
+      });
+      show(0);
+    });
+
+    function activeSection() {
+      var currentId = "";
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].getBoundingClientRect().top <= 90) {
+          currentId = sections[i].id;
+        }
+      }
+      navLinks.forEach(function (link) {
+        link.classList.toggle("is-active", link.getAttribute("href") === "#" + currentId);
+      });
+    }
+    window.addEventListener("scroll", activeSection, { passive: true });
+    activeSection();
+  })();
+</script>
+</body>
+</html>
