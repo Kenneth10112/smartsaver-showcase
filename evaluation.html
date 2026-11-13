@@ -413,7 +413,20 @@
     font: inherit;
     font-size: 14px;
   }
+  .field textarea { resize: vertical; line-height: 1.5; }
   .field input:focus, .field textarea:focus, .field select:focus { outline: 2px solid var(--peak); outline-offset: 1px; }
+
+  /* improvement notes */
+  .improve {
+    max-width: 76ch;
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+  }
+  .improve span { color: var(--ink); font-weight: 500; }
+  .improve span small { display: block; margin-top: 1px; color: var(--muted); font-size: 12px; font-weight: 400; }
+  .improve textarea { min-height: 84px; }
+  .overall-notes { margin-top: 18px; }
 
   .check-group { margin: 14px 0 4px; padding: 0; border: 0; }
   .check-group legend { display: block; width: 100%; margin-bottom: 6px; color: var(--ink); font-size: 14px; font-weight: 700; }
@@ -523,6 +536,7 @@
         <p>This instrument asks you, as an expert evaluator, to assess SmartSaver against the selected ISO/IEC 25010:2023 product quality characteristics that the showcase and its documentation can evidence. Responses are used solely for academic research and are reported in aggregate.</p>
         <p>Please base each rating on your own inspection of the system against the criteria, not on the researchers' claims. Where a characteristic is deliberately limited in this version, a lower rating is the correct and useful response.</p>
         <p>This shortened form retains the statements that can be judged from the showcase and the accompanying documentation. Statements that require source-code inspection, hardware access, live instrumentation, or internal server operation have been removed. Questions are renumbered 1–13 here; section letters follow the full instrument.</p>
+        <p>Each characteristic ends with an optional <strong>improvement notes</strong> box. If you rate anything 2 or below, a sentence on what would raise it is the most useful thing you can give the researchers.</p>
         <div class="actions">
           <a class="btn" href="index.html">Back to showcase</a>
           <a class="btn" href="documentation.html">Review the evidence</a>
@@ -572,17 +586,19 @@
 
         <section class="form-section" id="ratings">
           <h2 class="section-heading">Part III. Evaluation by Quality Characteristic</h2>
-          <p class="form-desc">Rate each statement from 4 (Excellent) to 1 (Poor).</p>
+          <p class="form-desc">Rate each statement from 4 (Excellent) to 1 (Poor). Each characteristic ends with an optional box for improvement notes.</p>
           <p class="progress-line"><output id="progress" aria-live="polite">0 of 14 rated</output></p>
         </section>
 
         <section class="form-section" id="functional-suitability"><h2 class="section-heading">A. Functional Suitability</h2><p class="form-desc">The degree to which the system provides functions that meet stated and implied needs, and does so correctly and completely.</p>
 <fieldset class="statement"><legend><span class="qnum">1</span><span class="statement-text">The system performs the functions defined in its scope: wired sensing (motion, temperature and humidity, light), wireless module discovery and pairing, rule-based automated control, manual override, live device monitoring, and backup/restore of configuration. Savings reporting is planned with the History Server but is not deployed in this build.</span></legend><div class="rating"><label><input type="radio" name="q1" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q1" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q1" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q1" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
 <fieldset class="statement"><legend><span class="qnum">2</span><span class="statement-text">Rule evaluation is correct: a satisfied trigger produces the configured action, and when several rules target the same appliance exactly one command is issued according to the defined priority order.</span></legend><div class="rating"><label><input type="radio" name="q2" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q2" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q2" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q2" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Functional Suitability <em>(optional)</em><small>What is missing, incorrect or incomplete, and what would raise your rating?</small></span><textarea name="improvement_functional_suitability" rows="3"></textarea></label>
 </section>
 <section class="form-section" id="reliability"><h2 class="section-heading">C. Reliability</h2><p class="form-desc">The degree to which the system performs specified functions under specified conditions for a specified period.</p>
 <fieldset class="statement"><legend><span class="qnum">3</span><span class="statement-text">The system tolerates a Wireless Module going out of range, losing power or being removed, without disturbing the rest of the installation.</span></legend><div class="rating"><label><input type="radio" name="q3" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q3" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q3" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q3" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
 <fieldset class="statement"><legend><span class="qnum">4</span><span class="statement-text">The system recovers predictably after a power interruption, including restoring persisted configuration and automation rules.</span></legend><div class="rating"><label><input type="radio" name="q4" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q4" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q4" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q4" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Reliability <em>(optional)</em><small>Which failure or recovery behaviours should be strengthened or better documented?</small></span><textarea name="improvement_reliability" rows="3"></textarea></label>
 </section>
 <section class="form-section" id="usability"><h2 class="section-heading">D. Usability</h2><p class="form-desc">The degree to which the system can be used by specified users to achieve specified goals effectively, efficiently and satisfactorily.</p>
 <fieldset class="statement"><legend><span class="qnum">5</span><span class="statement-text">An ordinary household occupant with no technical background can complete initial configuration through the Hub&#x27;s captive-portal setup page without assistance.</span></legend><div class="rating"><label><input type="radio" name="q5" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q5" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q5" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q5" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
@@ -590,22 +606,26 @@
 <fieldset class="statement"><legend><span class="qnum">7</span><span class="statement-text">The registry-driven rule editor allows a valid automation rule to be built without knowledge of the underlying protocol or device identifiers.</span></legend><div class="rating"><label><input type="radio" name="q7" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q7" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q7" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q7" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
 <fieldset class="statement"><legend><span class="qnum">8</span><span class="statement-text">Applying a manual override, and understanding when automation will resume, is clear to the user.</span></legend><div class="rating"><label><input type="radio" name="q8" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q8" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q8" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q8" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
 <fieldset class="statement"><legend><span class="qnum">9</span><span class="statement-text">The interface is consistent in its layout and terminology across the pages a user has to visit.</span></legend><div class="rating"><label><input type="radio" name="q9" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q9" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q9" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q9" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Usability <em>(optional)</em><small>Name the page or step (setup, dashboard, rule editor, override) and what would make it easier to use.</small></span><textarea name="improvement_usability" rows="3"></textarea></label>
 </section>
 <section class="form-section" id="security"><h2 class="section-heading">E. Security</h2><p class="form-desc">The degree to which the system protects information and data so that access is appropriate to the level of authorisation.</p>
 <fieldset class="statement"><legend><span class="qnum">10</span><span class="statement-text">Access to the Hub&#x27;s dashboard is protected by credentials, and the session cannot be established without them.</span></legend><div class="rating"><label><input type="radio" name="q10" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q10" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q10" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q10" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
 <fieldset class="statement"><legend><span class="qnum">11</span><span class="statement-text">Wireless traffic between the Hub and its modules is unencrypted in this version. The broadcast-discovery limitation that forces this is documented, and the deployment is restricted to a trusted home network. Is that limitation and mitigation adequate?</span></legend><div class="rating"><label><input type="radio" name="q11" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q11" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q11" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q11" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Security <em>(optional)</em><small>For example, how the encryption gap or dashboard authentication could be closed or better mitigated.</small></span><textarea name="improvement_security" rows="3"></textarea></label>
 </section>
 <section class="form-section" id="maintainability"><h2 class="section-heading">G. Maintainability</h2><p class="form-desc">The degree to which the system can be modified effectively and efficiently, including correction and improvement.</p>
 <fieldset class="statement"><legend><span class="qnum">12</span><span class="statement-text">Configuration is centralised and documented, so the system can be reconfigured without editing source code.</span></legend><div class="rating"><label><input type="radio" name="q12" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q12" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q12" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q12" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Maintainability <em>(optional)</em><small>Gaps in configuration structure or documentation that would hinder future changes.</small></span><textarea name="improvement_maintainability" rows="3"></textarea></label>
 </section>
 <section class="form-section" id="portability"><h2 class="section-heading">H. Portability</h2><p class="form-desc">The degree to which the system can be transferred from one environment to another effectively and efficiently.</p>
 <fieldset class="statement"><legend><span class="qnum">13</span><span class="statement-text">The system can be installed in a different dwelling with a different number of rooms and appliances by adding or removing modules and adjusting configuration alone.</span></legend><div class="rating"><label><input type="radio" name="q13" value="4" required><span><b>4</b><small>Excellent</small></span></label><label><input type="radio" name="q13" value="3" required><span><b>3</b><small>Good</small></span></label><label><input type="radio" name="q13" value="2" required><span><b>2</b><small>Fair</small></span></label><label><input type="radio" name="q13" value="1" required><span><b>1</b><small>Poor</small></span></label></div></fieldset>
+<label class="field improve"><span>Improvement notes: Portability <em>(optional)</em><small>What would make installing in a different home easier or less error-prone?</small></span><textarea name="improvement_portability" rows="3"></textarea></label>
 </section>
 
         <section class="form-section" id="recommendation">
           <h2 class="section-heading">Part IV. Overall Assessment and Recommendations</h2>
           <fieldset class="check-group">
-            <legend>5. Would you recommend this system for general household use in its current state, based on the showcase and documentation?</legend>
+            <legend>Would you recommend this system for general household use in its current state, based on the showcase and documentation?</legend>
             <label><input type="radio" name="recommendation" value="Yes, without reservation" required> Yes, without reservation</label>
             <label><input type="radio" name="recommendation" value="Yes, with the improvements I noted"> Yes, with the improvements I noted</label>
             <label><input type="radio" name="recommendation" value="Not yet"> Not yet</label>
@@ -622,6 +642,9 @@
               <label><input type="radio" name="overall" value="1"><span><b>1</b><small>Poor</small></span></label>
             </div>
           </fieldset>
+
+          <label class="field improve overall-notes"><span>Priority improvements <em>(optional)</em><small>If you could change up to three things before this system is used in a real household, what would they be, most important first?</small></span><textarea name="improvement_priorities" rows="5"></textarea></label>
+          <label class="field improve"><span>Other comments <em>(optional)</em><small>Anything else about the system, the evidence provided, or this evaluation form.</small></span><textarea name="other_comments" rows="4"></textarea></label>
         </section>
 
         <section class="form-section submit-section">
